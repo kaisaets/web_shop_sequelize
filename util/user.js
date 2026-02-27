@@ -5,7 +5,6 @@ const { sequelize } = require("./db");
 const appUser = async (req, res) => {
   try {
     let user = await User.findByPk(1);
-    console.log("User", user);
 
     if (!user) {
       user = await User.create({
