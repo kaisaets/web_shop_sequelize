@@ -5,99 +5,107 @@ const CartItem = require("../models/cart-item");
 class shopController {
   async getAllProducts(req, res) {
     try {
-        const products = await Product.findAll();
-        res.status(201).json({ products: products });
-    } catch (error){
-        console.log('Shop products error', error)
-        res.status(500).json({ error: error });
+      const products = await Product.findAll();
+      res.status(201).json({ products: products });
+    } catch (error) {
+      console.log("Shop products error", error);
+      res.status(500).json({ error: error });
     }
   }
 
   async getCart(req, res) {
-    console.log(req.user)
+    console.log(req.user);
     try {
-        console.log(req.user)
-        const userCart = await req.user.getCart();
-        console.log(userCart)
-        const cartProducts = await userCart.getProducts();
-        console.log('Products on cart', cartProducts);
-        cartProducts.forEach(product => {
-          console.log(product.CartItem)
-        });
-        res.status(201).json({
+      console.log(req.user);
+      const userCart = await req.user.getCart();
+      console.log(userCart);
+      const cartProducts = await userCart.getProducts();
+      console.log("Products on cart", cartProducts);
+      cartProducts.forEach((product) => {
+        console.log(product.CartItem);
+      });
+      res.status(201).json({
         cart: cartProducts,
-        });
+      });
     } catch (error) {
-        console.log('Shop products error', error)
-        res.status(500).json({ error: error });
+      console.log("Shop products error", error);
+      res.status(500).json({ error: error });
     }
   }
 
-  /*
   async addToCart(req, res) {
-    const prodId = req.body.productId;
-    let fetchedCart;
-    let newQuantity = 1;
-
     try {
-      const cart = await req.user.getCart();
-      fetchedCart = CartItem;
-      const products= await cart.getProducts({ where: { id: prodId } });
-      let product
-
-      if (products.length > 0) {
-        product = products[0];
+      const productId = parseInt(req.body.productId);
+      const userCart = await req.user.getCart();
+      if (!userCart) {
+        return res.status(404).json({ error: "Cart not found for the user." });
       }
-
-      if (product) {
-        const oldQuantity = product.cartItem.quantity;
-        newQuantity = oldQuantity + 1;
-        await fetchedCart.addProduct(product, {
-          through: { quantity: newQuantity },
-        });
+      const products = await userCart.getProducts();
+      if (products.length == 0) {
+        const product = await Product.findByPk(productId);
+        await userCart.addProduct(product, { through: { quantity: 1 } });
       } else {
-        const productToAdd = await Product.findByPk(prodId);
-        await fetchedCart.addProduct(productToAdd, {
-          through: { quantity: newQuantity },
-        });
+        if (await userCart.hasProduct(productId)) {
+          const cartItem = await CartItem.findOne({
+            where: {
+              cartId: userCart.id,
+              productId: productId,
+            },
+          });
+          cartItem.quantity += 1;
+          await cartItem.save();
+        } else {
+          const product = await Product.findByPk(productId);
+          await userCart.addProduct(product, { through: { quantity: 1 } });
+        }
       }
-      res.status(201).json({ message: "Added to cart!" });
-    } catch (err) {
-      res.status(500).json({ error: err.message });
+      res.status(200).json({ message: "Product added to cart successfully." });
+    } catch (error) {
+      console.error("Error adding product to cart:", error);
+      res.status(500).json({
+        error: "An error occurred while adding the product to the cart.",
+      });
     }
   }
-  */
 
-  async addToCart(req, res){
+  async deleteProductFromCart(req, res) {
     try {
-    const productId = parseInt(req.body.productId);
-    const userCart = await req.user.getCart();
-    if (!userCart) {
-      return res.status(404).json({ error: 'Cart not found for the user.' });
-    }
-    const products = await userCart.getProducts();
-    if (products.length == 0) {
-        const product = await Product.findByPk(productId);
-        await userCart.addProduct(product, { through: { quantity: 1} });
-    } else {
-        if(await userCart.hasProduct(productId)) {
-            const cartItem = await CartItem.findOne({
-                where: {
-                    cartId: userCart.id,
-                    productId: productId
-                }
-            });
-            cartItem.quantity += 1;
+      const productId = parseInt(req.body.productId);
+      const userCart = await req.user.getCart();
+      if (!userCart) {
+        return res.status(404).json({ error: "User does not have a cart" });
+      }
+      const products = await userCart.getProducts();
+      if (products.length == 0) {
+        return res.status(404).json({ error: "No products in cart" });
+      } else {
+        if (await userCart.hasProduct(productId)) {
+          const cartItem = await CartItem.findOne({
+            where: {
+              cartId: userCart.id,
+              productId: productId,
+            },
+          });
+          if (cartItem.quantity > 1) {
+            cartItem.quantity -= 1;
             await cartItem.save();
+          } else {
+            await cartItem.save();
+          }
         } else {
-            const product = await Product.findByPk(productId);
-            await userCart.addProduct(product, { through: { quantity: 1} });
+          return res.status(404).json({ error: "Product not found in cart" });
         }
-    }
-    res.status(200).json({ message: 'Product added to cart successfully.' });
+      }
+      res
+        .status(200)
+        .json({ message: "Product removed from cart successfully." });
     } catch (error) {
-      console.error('Error adding product to cart:', error);
-      res.status(500).json({ error: 'An error occurred while adding the product to the cart.' });
+      console.error("Error removing product from cart: ", error);
+      res
+        .status(500)
+        .json({
+          error: "An error occurred while removing the product from the cart.",
+        });
     }
   }
 }
