@@ -1,16 +1,16 @@
 const express = require("express");
 const { sequelize } = require("./util/db");
-//const { User, Product, Cart, CartItem } = require("./models/index");
-const User = require('./models/user')
-const Product = require('./models/product')
-const Cart = require('./models/cart')
-const CartItem = require('./models/cart-item')
+const User = require("./models/user");
+const Product = require("./models/product");
+const Cart = require("./models/cart");
+const CartItem = require("./models/cart-item");
+const Order = require("./models/order");
+const OrderItem = require("./models/order-item");
 const { appUser } = require("./util/user");
 
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
 
 app.use(async (req, res, next) => {
   try {
@@ -62,11 +62,33 @@ Product.belongsToMany(Cart, {
   otherKey: "cartId",
 });
 
-//console.log(Cart.associations.Products.accessors)
-//console.log(Product.associations.Carts.accessors)
+//4. User <-> Order
+User.hasMany(Order, {
+  foreignKey: "userId",
+});
+
+Order.belongsTo(User, {
+  foreignKey: "userId",
+});
+
+//5. Product <-> Order
+Order.belongsToMany(Product, {
+  through: OrderItem,
+  foreignKey: "orderId",
+  otherKey: "productId",
+});
+
+Product.belongsToMany(Order, {
+  through: OrderItem,
+  foreignKey: "productId",
+  otherKey: "orderId",
+});
 
 const shopRoutes = require("./routes/shop");
 app.use(shopRoutes);
+
+const orderRoutes = require("./routes/order");
+app.use(orderRoutes);
 
 sequelize
   .sync()
@@ -86,6 +108,6 @@ sequelize
     //console.log(cart);
     app.listen(3002);
   })
-  .catch(err => {
-     console.error("DB sync error:", err);
+  .catch((err) => {
+    console.error("DB sync error:", err);
   });
