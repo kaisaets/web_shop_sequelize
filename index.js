@@ -11,6 +11,7 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+
 app.use(async (req, res, next) => {
   try {
     const user = await appUser();
@@ -25,10 +26,10 @@ app.use(async (req, res, next) => {
 });
 
 const adminProductRoutes = require("./routes/admin/products");
-const productRoutes = require("./routes/products");
+//const productRoutes = require("./routes/products");
 
 app.use("/admin/", adminProductRoutes);
-app.use("/", productRoutes);
+//app.use("/", productRoutes);
 
 // 1. User <-> Product
 User.hasMany(Product, {
@@ -64,6 +65,9 @@ Product.belongsToMany(Cart, {
 //console.log(Cart.associations.Products.accessors)
 //console.log(Product.associations.Carts.accessors)
 
+const shopRoutes = require("./routes/shop");
+app.use(shopRoutes);
+
 sequelize
   .sync()
   .then(() => {
@@ -81,11 +85,7 @@ sequelize
   .then((cart) => {
     //console.log(cart);
     app.listen(3002);
+  })
+  .catch(err => {
+     console.error("DB sync error:", err);
   });
-
-const shopRoutes = require("./routes/shop");
-app.use(shopRoutes);
-
-app.listen(3027, () => {
-  console.log(`Server is running on port 3027`);
-});
